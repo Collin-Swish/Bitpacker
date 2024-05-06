@@ -6,24 +6,11 @@
 #include <fstream>
 #pragma once
 
-bool compareCharCount(CharCount x1, CharCount x2) {
-    return x1.count() > x2.count();
-}
-
 bool compareNodes(Node* n1, Node* n2) {
     return n1->count() > n2->count();
 }
 
-void CharCount::encode(BitField* field) {
-    field->push_back(true);
-    field->push_byte(data);
-}
 
-void TreeNode::encode(BitField* field) {
-    field->push_back(false);
-    left->encode(field);
-    right->encode(field);
-}
 
 std::vector<Node*> Huffman::frequency(FILE* fp) {
     int counts[256];
@@ -66,45 +53,17 @@ std::vector<Node*> Huffman::frequency( std::string input ) {
     return pairs;
 }
 
-void CharCount::map(std::unordered_map<uint8_t, std::vector<bool>>* sets, std::vector<bool> path) {
-    (*sets)[data] = path;
-}
 
 
-uint8_t TreeNode::retrieve( std::vector<bool>::iterator* begin) {
-    // Write the function to end on the end iterator.
-    bool val = *(*begin);
-    (*begin)++;
-    if(val) {
-        return right->retrieve(begin);
-    }
-    return left->retrieve(begin);
-}
 
-void TreeNode::map(std::unordered_map<uint8_t, std::vector<bool>>* sets, std::vector<bool> path) {
-    auto lpath = std::vector<bool>(path);
-    auto rpath = std::vector<bool>(path);
-    lpath.push_back(false);
-    rpath.push_back(true);
-    left->map(sets, lpath);
-    right->map(sets, rpath);
-}
 
-int TreeNode::count() {
-    if(cache != -1) {
-        return cache;
-    }
-    cache = left->count() + right->count();
-    return cache;
-}
+
+
+
+
 
 Huffman::~Huffman() {
     delete root;
-}
-
-TreeNode::~TreeNode() {
-    delete left;
-    delete right;
 }
 
 BitField Huffman::encode() {
@@ -192,43 +151,6 @@ std::string Huffman::decode(BitField field) {
     return decoded;
 }
 
-CharCount::CharCount(BitField* field, int* index) {
-    data = field->get_byte(*index);
-    (*index) += 8;
-    weight = 0;
-}
-
-TreeNode::TreeNode( BitField* field, int* index) {
-    bool flag = (*field)[*index];
-    (*index)++;
-    if(flag) {
-        left = new CharCount(field, index);
-    }
-    else {
-        left = new TreeNode(field, index);
-    }
-    flag = (*field)[*index];
-    (*index)++;
-    if(flag) {
-        right = new CharCount(field, index);
-    }
-    else {
-        right = new TreeNode(field, index);
-    }
-}
-
-void CharCount::encode_tree(BitField* field) {
-    int bits = field->bits();
-    field->push_back(true);
-    field->push_byte(data);
-}
-
-void TreeNode::encode_tree(BitField* field) {
-    field->push_back(false);
-    left->encode_tree(field);
-    right->encode_tree(field);
-}
-
 void Huffman::Save(std::string name) {
     std::ofstream fp(name);
     BitField field(1);
@@ -254,7 +176,7 @@ void Huffman::Save(std::string name) {
     int nodes = 0;
     root->count_nodes(&nodes);
     std::cout << "Encoding " << nodes << " nodes\n";
-    fp.write((const char*) field.data(), field.bytes() + 1);
+    fp.write((const char*) field.data(), field.byte_len() + 1);
     fp.close();
 }
 
@@ -288,14 +210,4 @@ std::string Huffman::Load(std::string name) {
         remaining--;
     }
     return Huffman::decode(field);
-}
-
-void CharCount::count_nodes(int* x) {
-    (*x)++;
-}
-
-void TreeNode::count_nodes(int* x) {
-    (*x)++;
-    left->count_nodes(x);
-    right->count_nodes(x);
 }
