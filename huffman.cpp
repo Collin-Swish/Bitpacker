@@ -53,15 +53,6 @@ std::vector<Node*> Huffman::frequency( std::string input ) {
     return pairs;
 }
 
-
-
-
-
-
-
-
-
-
 Huffman::~Huffman() {
     delete root;
 }
@@ -84,15 +75,15 @@ Huffman::Huffman( FILE* fp ) {
         size = nodes.size();
     }
     root = nodes[0];
-    auto mapper = std::unordered_map<uint8_t, std::vector<bool>>();
+    std::vector<bool> mapper[256];
     auto opath = std::vector<bool>();
-    root->map(&mapper, opath);
+    root->map(mapper, opath);
     uint8_t buffer[128];
     while(!feof(fp)) {
         size_t read = fread((void*) buffer, 1, 128, fp);
         for(int i = 0; i < read; i++) {
             auto cpath = mapper[buffer[i]];
-            std::cout << "mapping " << (int) buffer[i] << "\n";
+            // std::cout << "mapping " << (int) buffer[i] << "\n";
             opath.insert(opath.end(), cpath.begin(), cpath.end());
         }
     }
@@ -112,9 +103,9 @@ Huffman::Huffman( std::string input ) {
         size = nodes.size();
     }
     root = nodes[0];
-    auto mapper = std::unordered_map<uint8_t, std::vector<bool>>();
+    std::vector<bool> mapper[256];
     auto opath = std::vector<bool>();
-    root->map(&mapper, opath);
+    root->map(mapper, opath);
     for(char c : input) {
         auto cpath = mapper[c];
         opath.insert(opath.end(), cpath.begin(), cpath.end());

@@ -16,7 +16,7 @@ uint8_t TreeNode::retrieve( std::vector<bool>::iterator* begin) {
     return left->retrieve(begin);
 }
 
-void TreeNode::map(std::unordered_map<uint8_t, std::vector<bool>>* sets, std::vector<bool> path) {
+void TreeNode::map(std::vector<bool>* sets, std::vector<bool> path) {
     auto lpath = std::vector<bool>(path);
     auto rpath = std::vector<bool>(path);
     lpath.push_back(false);

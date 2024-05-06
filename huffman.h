@@ -15,7 +15,7 @@ class Node {
             return 0;
         };
         virtual void map(
-            std::unordered_map<uint8_t, std::vector<bool>>* sets, 
+            std::vector<bool>* sets, 
             std::vector<bool> path
         ) {}
 };
@@ -27,7 +27,7 @@ class CharCount : public Node {
         void encode_tree( BitField* );
         int count() {return weight;};
         void map(
-            std::unordered_map<uint8_t, std::vector<bool>>* sets, 
+            std::vector<bool>* sets, 
             std::vector<bool> path
         );
         uint8_t retrieve( std::vector<bool>::iterator* begin ) {return data;};
@@ -50,7 +50,7 @@ class TreeNode : public Node {
             this->right = right;
         }
         void map(
-            std::unordered_map<uint8_t, std::vector<bool>>* sets,
+            std::vector<bool>* sets,
             std::vector<bool> path
         );
         int count();
