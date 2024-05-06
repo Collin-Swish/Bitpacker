@@ -202,3 +202,93 @@ std::string Huffman::Load(std::string name) {
     }
     return Huffman::decode(field);
 }
+
+std::vector<Node*> frequency(FILE* fp) {
+    int counts[256];
+    uint8_t buffer[128];
+    memset(counts, 0, sizeof(int) * 256);
+    while(!feof(fp)) {
+        size_t read = fread((void*) buffer, 1, 128, fp);
+        for(int i = 0; i < read; i++) {
+            counts[buffer[i]]++;
+        }
+    }
+    fseek(fp, SEEK_SET, 0);
+    // filter out characters which don't exist and attach the count to the character so they can be sorted. 
+    auto pairs = std::vector<Node*>();
+    for(int i = 0; i < 256; i++) {
+        if(counts[i] != 0) {
+            pairs.push_back(new CharCount(counts[i], i));
+        }
+    }
+    return pairs;
+}
+
+void Save(FILE* ofp, FILE* ifp) {
+    auto nodes = frequency(ifp);
+    size_t size = nodes.size();
+    while(size > 1) {
+        std::sort(nodes.begin(), nodes.end(), compareNodes);
+        Node* combined = new TreeNode(nodes[size - 1], nodes[size - 2]);
+        nodes.pop_back();
+        nodes.pop_back();
+        nodes.push_back(combined);
+        size = nodes.size();
+    }
+    BitField output_data(150);
+    uint8_t first;
+    bool first_set = false;
+    // Allocate 4 bits for header
+    output_data.push_back(false);
+    output_data.push_back(false);
+    output_data.push_back(false);
+    output_data.push_back(false);
+    Node* root = nodes[0];
+    root->encode_tree(&output_data);
+    std::vector<bool> mapper[256];
+    auto opath = std::vector<bool>();
+    root->map(mapper, opath);
+    uint8_t buffer[128];
+    while(!feof(ifp)) {
+        if(output_data.byte_len() > 0 && !first_set) {
+            first = output_data.get_byte(0);
+            std::cout << "setting first to " << (int) first << "\n";
+            first_set = true;
+        }
+        if(output_data.byte_len() - 1 > 512000) {
+            fwrite((void*) output_data.data(), 1, 511999, ofp);
+            output_data.remove_bytes(511999);
+        }
+        size_t read = fread((void*) buffer, 1, 128, ifp);
+        for(int i = 0; i < read; i++) {
+            auto cpath = mapper[buffer[i]];
+            output_data.extend(cpath);
+        }
+    }
+    fwrite((void*) output_data.data(), 1, output_data.byte_len() + 1, ofp);
+    fclose(ifp);
+    // Retrieve the first byte in the file to modify the header.
+    uint8_t offset = (uint8_t) (output_data.bits() % 8);
+    std::cout << (int) offset << "\n";
+    BitField f(2);
+    f.push_byte(first);
+    bool bits[4];
+    uint8_t mask = 8;
+    int i = 0;
+    while(mask > 0) {
+        bits[i] = ((offset & mask) != 0);
+        std::cout << bits[i] << "\n";
+        i++;
+        mask >>= 1;
+    }
+    for(int i = 0; i < 4; i++) {
+        if(bits[i]) {
+            f.set(i);
+            f.print();
+        }
+    }
+    fseek(ofp, SEEK_SET, 0);
+    f.print();
+    fwrite((void*) f.data(), 1, 1, ofp);
+    fclose(ofp);
+}

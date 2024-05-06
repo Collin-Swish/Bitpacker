@@ -8,6 +8,7 @@
 class BitField {
     public:
         BitField( size_t size );
+        BitField( std::vector<bool> );
         void write( std::ofstream );
         bool operator[]( size_t );
         uint8_t* data();

@@ -77,11 +77,10 @@ class Huffman {
         std::vector<Node*> frequency( std::string );
         std::vector<Node*> frequency( FILE* );
         std::vector<bool> data;
-        Node* root = NULL;
-        
-        
+        Node* root = NULL;  
 };
 
+std::vector<Node*> frequency( FILE* );
 bool compareNodes(Node* n1, Node* n2);
 
 #include "huffman.cpp"

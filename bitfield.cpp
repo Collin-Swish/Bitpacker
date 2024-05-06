@@ -136,6 +136,14 @@ void BitField::remove_bytes(size_t count) {
     }
     // TODO Finish this.
     byte_length -= count;
-    memcpy((void*) dat, (void*) (dat + count), byte_length);
-    memset((void*) (dat + byte_length), 0, count);
+    memcpy((void*) dat, (void*) (dat + count), byte_length + 1);
+    memset((void*) (dat + (byte_length + 1)), 0, count);
+}
+
+BitField::BitField( std::vector<bool> flags ) {
+    size_t byte_size = (flags.size() / 8) + 1;
+    dat = new uint8_t[byte_size];
+    for(bool b : flags) {
+        this->push_back(b);
+    }
 }
