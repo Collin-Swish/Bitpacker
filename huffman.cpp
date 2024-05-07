@@ -10,110 +10,7 @@ bool compareNodes(Node* n1, Node* n2) {
     return n1->count() > n2->count();
 }
 
-
-
-std::vector<Node*> Huffman::frequency(FILE* fp) {
-    int counts[256];
-    uint8_t buffer[128];
-    memset(counts, 0, sizeof(int) * 256);
-    while(!feof(fp)) {
-        size_t read = fread((void*) buffer, 1, 128, fp);
-        for(int i = 0; i < read; i++) {
-            counts[buffer[i]]++;
-        }
-    }
-    fseek(fp, SEEK_SET, 0);
-    // filter out characters which don't exist and attach the count to the character so they can be sorted. 
-    auto pairs = std::vector<Node*>();
-    for(int i = 0; i < 256; i++) {
-        if(counts[i] != 0) {
-            pairs.push_back(new CharCount(counts[i], i));
-        }
-    }
-    return pairs;
-}
-
-std::vector<Node*> Huffman::frequency( std::string input ) {
-    // Initialize array to 0
-    int counts[256];
-    memset(counts, 0, sizeof(int) * 256);
-    int size = input.size();
-    // Iterate through and increment the array using character as the index.
-    for(int i = 0; i < size; i++) {
-        uint8_t p = (uint8_t) input[i];
-        counts[p]++;
-    }
-    // filter out characters which don't exist and attach the count to the character so they can be sorted. 
-    auto pairs = std::vector<Node*>();
-    for(int i = 0; i < 256; i++) {
-        if(counts[i] != 0) {
-            pairs.push_back(new CharCount(counts[i], i));
-        }
-    }
-    return pairs;
-}
-
-Huffman::~Huffman() {
-    delete root;
-}
-
-BitField Huffman::encode() {
-    BitField field = BitField(1);
-    root->encode(&field);
-    return field;
-}
-
-Huffman::Huffman( FILE* fp ) {
-    auto nodes = this->frequency(fp);
-    size_t size = nodes.size();
-    while(size > 1) {
-        std::sort(nodes.begin(), nodes.end(), compareNodes);
-        Node* combined = new TreeNode(nodes[size - 1], nodes[size - 2]);
-        nodes.pop_back();
-        nodes.pop_back();
-        nodes.push_back(combined);
-        size = nodes.size();
-    }
-    root = nodes[0];
-    std::vector<bool> mapper[256];
-    auto opath = std::vector<bool>();
-    root->map(mapper, opath);
-    uint8_t buffer[128];
-    while(!feof(fp)) {
-        size_t read = fread((void*) buffer, 1, 128, fp);
-        for(int i = 0; i < read; i++) {
-            auto cpath = mapper[buffer[i]];
-            // std::cout << "mapping " << (int) buffer[i] << "\n";
-            opath.insert(opath.end(), cpath.begin(), cpath.end());
-        }
-    }
-    fclose(fp);
-    data = opath;
-}
-
-Huffman::Huffman( std::string input ) {
-    std::vector<Node*> nodes = this->frequency(input);
-    size_t size = nodes.size();
-    while(size > 1) {
-        std::sort(nodes.begin(), nodes.end(), compareNodes);
-        Node* combined = new TreeNode(nodes[size - 1], nodes[size - 2]);
-        nodes.pop_back();
-        nodes.pop_back();
-        nodes.push_back(combined);
-        size = nodes.size();
-    }
-    root = nodes[0];
-    std::vector<bool> mapper[256];
-    auto opath = std::vector<bool>();
-    root->map(mapper, opath);
-    for(char c : input) {
-        auto cpath = mapper[c];
-        opath.insert(opath.end(), cpath.begin(), cpath.end());
-    }
-    data = opath;
-}
-
-std::string Huffman::decode(BitField field) {
+std::string decode(BitField field) {
     int bits = field.bits();
     int index = 0;
     std::string decoded;
@@ -142,37 +39,41 @@ std::string Huffman::decode(BitField field) {
     return decoded;
 }
 
-void Huffman::Save(std::string name) {
-    std::ofstream fp(name);
-    BitField field(1);
-    field.push_back(false);
-    field.push_back(false);
-    field.push_back(false);
-    field.push_back(false);
-    root->encode_tree(&field);
-    for(bool flag : data) {
-        field.push_back(flag);
+void decode_stream(FILE* ofp, BitField field) {
+    int bits = field.bits();
+    int index = 0;
+    uint8_t remaining = field.get_byte(index, 4);
+    index += 4;
+    bool flag = field[index];
+    index++;
+    Node* root;
+    if(flag) {
+        uint8_t byte = field.get_byte(index);
+        root = new CharCount(&field, &index);
     }
-    uint8_t x = field.bits() % 8;
-    uint8_t mask = 1 << 3;
+    else {
+        root = new TreeNode(&field, &index);
+    }    auto rest = std::vector<bool>();
+    for(;index < bits; index++) {
+        rest.push_back(field[index]);
+    }
+    auto iter = rest.begin();
+    uint8_t *buffer = new uint8_t[512000];
     int i = 0;
-    while(mask > 0) {
-        bool flag = ((x & mask) != 0);
-        if(flag) {
-            field.set(i);
+    while(iter != rest.end()) {
+        buffer[i] = root->retrieve(&iter);
+        if(i == (512000 - 1)) {
+            fwrite((void*) buffer, 1, 512000, ofp);
+            i = 0;
+            continue;
         }
         i++;
-        mask >>= 1;
     }
-    int nodes = 0;
-    root->count_nodes(&nodes);
-    std::cout << "Encoding " << nodes << " nodes\n";
-    fp.write((const char*) field.data(), field.byte_len() + 1);
-    fp.close();
-}
+    delete[] buffer;
+} 
 
-std::string Huffman::Load(std::string name) {
-    FILE* fp = fopen(name.c_str(), "r");
+void Load(std::string input, std::string output) {
+    FILE* fp = fopen(input.c_str(), "r");
     std::vector<uint8_t> data;
     BitField field(1);
     uint8_t buf[8];
@@ -200,7 +101,8 @@ std::string Huffman::Load(std::string name) {
         mask >>= 1;
         remaining--;
     }
-    return Huffman::decode(field);
+    FILE* ofp = fopen(output.c_str(), "w");
+    decode_stream(ofp, field);
 }
 
 std::vector<Node*> frequency(FILE* fp) {

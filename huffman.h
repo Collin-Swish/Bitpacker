@@ -64,24 +64,10 @@ class TreeNode : public Node {
         int cache = -1;
 };
 
-class Huffman {
-    public:
-        Huffman( std::string );
-        Huffman( FILE* );
-        ~Huffman();
-        void Save( std::string );
-        static std::string Load( std::string );
-        BitField encode();
-        static std::string decode( BitField );
-    private:
-        std::vector<Node*> frequency( std::string );
-        std::vector<Node*> frequency( FILE* );
-        std::vector<bool> data;
-        Node* root = NULL;  
-};
-
 std::vector<Node*> frequency( FILE* );
+std::string decode(BitField field);
 bool compareNodes(Node* n1, Node* n2);
+void Save(FILE* ofp, FILE* ifp);
 
 #include "huffman.cpp"
 #include "CharCount.cpp"
