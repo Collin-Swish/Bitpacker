@@ -61,7 +61,7 @@ void BitField::push_back(bool flag) {
     byte_length += bit_length / 8;
     bit_length %= 8;
     if(byte_length == byte_size) {
-        reserve(byte_size + 1);
+        reserve(byte_size * 2);
     }
 }
 
